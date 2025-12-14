@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
+import { AppSettingsModal } from "./components/AppSettingsModal";
 import { BottomNav, type Mode } from "./components/BottomNav";
 import { Controls } from "./components/Controls";
-import { Header } from "./components/Header";
+import { GlobalHeader } from "./components/GlobalHeader";
 import { PresetSelector, type Preset } from "./components/PresetSelector";
 import { Sets } from "./components/Sets";
-import { SettingsModal } from "./components/SettingsModal";
+import { TimerSettingsModal } from "./components/SettingsModal";
 import { Stopwatch } from "./components/Stopwatch";
 import { TimerDisplay } from "./components/TimerDisplay";
+import { TimerHeader } from "./components/TimerHeader";
 import { type TimerProfile, useTimer } from "./hooks/useTimer";
+import { useWakeLock } from "./hooks/useWakeLock";
 
 const PRESETS: Preset[] = [
 	{ id: "30sec", name: "30 SEC", workTime: 30, restTime: 5, rounds: 6 },
@@ -24,7 +27,8 @@ function formatTime(seconds: number): string {
 export default function App() {
 	const [mode, setMode] = useState<Mode>("rounds");
 	const [activePreset, setActivePreset] = useState("30sec");
-	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+	const [isAppSettingsOpen, setIsAppSettingsOpen] = useState(false);
+	const [isTimerSettingsOpen, setIsTimerSettingsOpen] = useState(false);
 	const [profile, setProfile] = useState<TimerProfile>(() => {
 		const preset = PRESETS.find((p) => p.id === "30sec")!;
 		return {
@@ -38,6 +42,9 @@ export default function App() {
 	});
 
 	const { state, toggle, reset, calculateTotalTime } = useTimer(profile);
+
+	// Keep screen awake while app is open
+	useWakeLock();
 
 	const handlePresetSelect = useCallback((presetId: string) => {
 		const preset = PRESETS.find((p) => p.id === presetId);
@@ -94,21 +101,23 @@ export default function App() {
 
 	return (
 		<>
-			<Header
-				profileName={profile.name}
-				totalTime={formatTime(remainingTime)}
-				onSettingsClick={() => setIsSettingsOpen(true)}
-				onResetClick={handleReset}
-			/>
-
-			<PresetSelector
-				presets={PRESETS}
-				activePreset={activePreset}
-				onSelect={handlePresetSelect}
-			/>
+			<GlobalHeader onSettingsClick={() => setIsAppSettingsOpen(true)} />
 
 			{mode === "rounds" && (
 				<>
+					<TimerHeader
+						profileName={profile.name}
+						totalTime={formatTime(remainingTime)}
+						onSettingsClick={() => setIsTimerSettingsOpen(true)}
+						onResetClick={handleReset}
+					/>
+
+					<PresetSelector
+						presets={PRESETS}
+						activePreset={activePreset}
+						onSelect={handlePresetSelect}
+					/>
+
 					<TimerDisplay
 						phase={state.phase}
 						mainTime={mainTime}
@@ -130,10 +139,15 @@ export default function App() {
 
 			<BottomNav activeMode={mode} onModeChange={setMode} />
 
-			<SettingsModal
-				isOpen={isSettingsOpen}
+			<AppSettingsModal
+				isOpen={isAppSettingsOpen}
+				onClose={() => setIsAppSettingsOpen(false)}
+			/>
+
+			<TimerSettingsModal
+				isOpen={isTimerSettingsOpen}
 				profile={profile}
-				onClose={() => setIsSettingsOpen(false)}
+				onClose={() => setIsTimerSettingsOpen(false)}
 				onSave={handleSettingsSave}
 			/>
 		</>

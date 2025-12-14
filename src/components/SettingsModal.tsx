@@ -1,21 +1,29 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { TimerProfile } from "../hooks/useTimer";
-import { AboutSection } from "./AboutSection";
 import styles from "./SettingsModal.module.css";
 
-interface SettingsModalProps {
+interface TimerSettingsModalProps {
 	isOpen: boolean;
 	profile: TimerProfile;
 	onClose: () => void;
 	onSave: (profile: TimerProfile) => void;
 }
 
-export function SettingsModal({ isOpen, profile, onClose, onSave }: SettingsModalProps) {
+export function TimerSettingsModal({ isOpen, profile, onClose, onSave }: TimerSettingsModalProps) {
 	const [workTime, setWorkTime] = useState(profile.workTime);
 	const [restTime, setRestTime] = useState(profile.restTime);
 	const [rounds, setRounds] = useState(profile.rounds);
 	const [cycles, setCycles] = useState(profile.cycles);
 	const [prepTime, setPrepTime] = useState(profile.prepTime);
+
+	// Sync state when profile changes (e.g., preset selection)
+	useEffect(() => {
+		setWorkTime(profile.workTime);
+		setRestTime(profile.restTime);
+		setRounds(profile.rounds);
+		setCycles(profile.cycles);
+		setPrepTime(profile.prepTime);
+	}, [profile]);
 
 	if (!isOpen) return null;
 
@@ -41,7 +49,7 @@ export function SettingsModal({ isOpen, profile, onClose, onSave }: SettingsModa
 		<div className={styles.modalOverlay} onClick={handleOverlayClick}>
 			<div className={styles.modal}>
 				<div className={styles.modalHeader}>
-					<h2 className={styles.modalTitle}>{profile.name} SETTINGS</h2>
+					<h2 className={styles.modalTitle}>TIMER SETTINGS</h2>
 					<button className={styles.modalClose} onClick={onClose}>
 						&times;
 					</button>
@@ -110,8 +118,6 @@ export function SettingsModal({ isOpen, profile, onClose, onSave }: SettingsModa
 					<button className={styles.modalSave} onClick={handleSave}>
 						SAVE SETTINGS
 					</button>
-
-					<AboutSection />
 				</div>
 			</div>
 		</div>
