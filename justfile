@@ -67,11 +67,11 @@ icons:
 
 # Deploy to surge.sh (staging)
 deploy-stage: test build
-    npx surge dist gym-timer-stage.surge.sh
+    npx surge dist igor-gym-timer-stage.surge.sh
 
 # Deploy to surge.sh (production)
 deploy-prod: test build
-    npx surge dist gym-timer.surge.sh
+    npx surge dist igor-gym-timer.surge.sh
 
 # Clean build artifacts
 clean:
