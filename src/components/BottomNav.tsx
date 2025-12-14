@@ -1,6 +1,6 @@
 import styles from "./BottomNav.module.css";
 
-export type Mode = "rounds" | "stopwatch";
+export type Mode = "rounds" | "stopwatch" | "sets";
 
 interface BottomNavProps {
 	activeMode: Mode;
@@ -31,6 +31,20 @@ export function BottomNav({ activeMode, onModeChange }: BottomNavProps) {
 					<path d="M12 2v2" />
 				</svg>
 				<span>STOPWATCH</span>
+			</button>
+			<button
+				className={`${styles.navItem} ${activeMode === "sets" ? styles.active : ""}`}
+				onClick={() => onModeChange("sets")}
+			>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+					{/* Tally marks icon - 4 vertical lines with diagonal strike */}
+					<path d="M5 4v16" />
+					<path d="M9 4v16" />
+					<path d="M13 4v16" />
+					<path d="M17 4v16" />
+					<path d="M3 18L21 6" />
+				</svg>
+				<span>SETS</span>
 			</button>
 		</nav>
 	);

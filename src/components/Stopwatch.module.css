@@ -10,13 +10,13 @@
 
 .stopwatchTime {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: clamp(60px, 18vw, 120px);
+  font-size: clamp(80px, 25vw, 180px);
   color: var(--text-light);
-  letter-spacing: 2px;
+  letter-spacing: 4px;
 }
 
 .stopwatchMs {
-  font-size: clamp(30px, 8vw, 48px);
+  font-size: clamp(40px, 12vw, 72px);
   color: var(--accent-green);
 }
 
