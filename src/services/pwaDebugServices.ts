@@ -7,9 +7,9 @@
 import {
 	BugReporterService,
 	ShakeDetector,
-} from "@anthropic/pwa-utils/bug-reporter";
-import { SessionRecorder } from "@anthropic/pwa-utils/session-recorder";
-import { VersionCheckService } from "@anthropic/pwa-utils/version-check";
+} from "@idvorkin/pwa-utils/bug-reporter";
+import { SessionRecorder } from "@idvorkin/pwa-utils/session-recorder";
+import { VersionCheckService } from "@idvorkin/pwa-utils/version-check";
 import {
 	BUILD_TIMESTAMP,
 	GIT_BRANCH,

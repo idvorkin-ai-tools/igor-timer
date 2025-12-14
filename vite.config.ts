@@ -119,7 +119,7 @@ export default defineConfig({
 		include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
 		deps: {
 			// Inline pwa-utils to handle ESM module resolution
-			inline: ["@anthropic/pwa-utils"],
+			inline: ["@idvorkin/pwa-utils"],
 		},
 	},
 });

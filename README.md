@@ -39,4 +39,4 @@ npm run build
 - React 18
 - TypeScript
 - Vite + vite-plugin-pwa
-- [@anthropic/pwa-utils](https://github.com/idvorkin/pwa-utils) for bug reporting & session recording
+- [@idvorkin/pwa-utils](https://github.com/idvorkin/pwa-utils) for bug reporting & session recording
