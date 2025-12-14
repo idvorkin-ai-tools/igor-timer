@@ -1,0 +1,46 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--bg-darker);
+}
+
+.headerCenter {
+  text-align: center;
+}
+
+.profileName {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--accent-orange);
+}
+
+.totalTime {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.headerBtn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--text-light);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.headerBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.headerBtn svg {
+  width: 28px;
+  height: 28px;
+}

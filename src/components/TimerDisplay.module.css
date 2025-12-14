@@ -1,0 +1,70 @@
+.timerDisplay {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.workSection {
+  flex: 2;
+  background: var(--work-color);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  transition: background 0.3s ease;
+}
+
+.workSection.resting {
+  background: var(--rest-color);
+}
+
+.phaseLabel {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(28px, 6vw, 42px);
+  color: #000;
+  letter-spacing: 4px;
+  margin-bottom: 10px;
+}
+
+.mainTime {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(100px, 28vw, 180px);
+  color: #000;
+  line-height: 0.9;
+  letter-spacing: 2px;
+}
+
+.restPreview {
+  background: var(--rest-color);
+  padding: 16px 20px;
+  text-align: center;
+  transition: background 0.3s ease;
+}
+
+.restPreview.working {
+  background: var(--work-color);
+}
+
+.restPreviewLabel {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 4px;
+}
+
+.restPreview.working .restPreviewLabel {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.restPreviewTime {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(36px, 10vw, 56px);
+  color: var(--text-light);
+}
+
+.restPreview.working .restPreviewTime {
+  color: #000;
+}

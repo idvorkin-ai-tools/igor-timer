@@ -1,0 +1,47 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --work-color: #7BF542;
+  --rest-color: #E85C4A;
+  --bg-dark: #1A1A1A;
+  --bg-darker: #0D0D0D;
+  --text-light: #FFFFFF;
+  --text-muted: #888888;
+  --accent-blue: #4A9EF5;
+  --accent-yellow: #F5D442;
+  --accent-green: #7BF542;
+  --accent-orange: #F5A842;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Oswald', sans-serif;
+  background: var(--bg-darker);
+  color: var(--text-light);
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  max-width: 500px;
+  margin: 0 auto;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Mobile-first: base styles are for mobile */
+/* Tablet/Desktop: add styles via min-width queries */
+@media (min-width: 768px) {
+  #root {
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
