@@ -2,18 +2,27 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import App from "./App";
+import { BugReporterProvider } from "./contexts/BugReporterContext";
+
+function renderApp() {
+	return render(
+		<BugReporterProvider>
+			<App />
+		</BugReporterProvider>
+	);
+}
 
 describe("App", () => {
 	it("should render the timer display", () => {
-		render(<App />);
+		renderApp();
 
-		expect(screen.getByText("WORK")).toBeInTheDocument();
+		// Timer shows time (no "WORK" label when idle)
 		expect(screen.getByText("00:30")).toBeInTheDocument();
 		expect(screen.getByText("REST")).toBeInTheDocument();
 	});
 
 	it("should render preset buttons", () => {
-		render(<App />);
+		renderApp();
 
 		// Use getAllByText since "30 SEC" appears in both preset button and header
 		expect(screen.getAllByText("30 SEC").length).toBeGreaterThanOrEqual(1);
@@ -22,21 +31,21 @@ describe("App", () => {
 	});
 
 	it("should render navigation buttons", () => {
-		render(<App />);
+		renderApp();
 
 		expect(screen.getByText("ROUNDS")).toBeInTheDocument();
 		expect(screen.getByText("STOPWATCH")).toBeInTheDocument();
 	});
 
 	it("should render start button", () => {
-		render(<App />);
+		renderApp();
 
 		expect(screen.getByText("START")).toBeInTheDocument();
 	});
 
 	it("should change preset when clicked", async () => {
 		const user = userEvent.setup();
-		render(<App />);
+		renderApp();
 
 		await user.click(screen.getByText("1 MIN"));
 
@@ -45,7 +54,7 @@ describe("App", () => {
 
 	it("should open timer settings modal when timer settings button clicked", async () => {
 		const user = userEvent.setup();
-		render(<App />);
+		renderApp();
 
 		await user.click(screen.getByLabelText("Timer Settings"));
 
@@ -55,7 +64,7 @@ describe("App", () => {
 
 	it("should close timer settings modal when close button clicked", async () => {
 		const user = userEvent.setup();
-		render(<App />);
+		renderApp();
 
 		await user.click(screen.getByLabelText("Timer Settings"));
 		await user.click(screen.getByText("×"));
@@ -65,7 +74,7 @@ describe("App", () => {
 
 	it("should open app settings modal when settings button clicked", async () => {
 		const user = userEvent.setup();
-		render(<App />);
+		renderApp();
 
 		await user.click(screen.getByLabelText("Settings"));
 

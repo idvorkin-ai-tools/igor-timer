@@ -1,10 +1,27 @@
+import { useVersionCheck } from "../hooks/useVersionCheck";
 import { formatTimestamp, getBuildInfo, getGitHubLinks } from "../services/githubService";
 import styles from "./AboutSection.module.css";
+
+function formatRelativeTime(date: Date | null): string {
+	if (!date) return "Never";
+	const now = new Date();
+	const diffMs = now.getTime() - date.getTime();
+	const diffSec = Math.floor(diffMs / 1000);
+	const diffMin = Math.floor(diffSec / 60);
+	const diffHour = Math.floor(diffMin / 60);
+
+	if (diffSec < 10) return "Just now";
+	if (diffSec < 60) return `${diffSec}s ago`;
+	if (diffMin < 60) return `${diffMin}m ago`;
+	if (diffHour < 24) return `${diffHour}h ago`;
+	return date.toLocaleDateString();
+}
 
 export function AboutSection() {
 	const buildInfo = getBuildInfo();
 	const links = getGitHubLinks();
 	const isDev = buildInfo.sha === "development";
+	const { lastCheckTime, isChecking, checkForUpdate, updateAvailable } = useVersionCheck();
 
 	return (
 		<div className={styles.aboutSection}>
@@ -45,7 +62,24 @@ export function AboutSection() {
 						</span>
 					</div>
 				)}
+
+				<div className={styles.infoRow}>
+					<span className={styles.infoLabel}>Last Checked</span>
+					<span className={styles.infoValue}>
+						{formatRelativeTime(lastCheckTime)}
+						{updateAvailable && <span className={styles.updateBadge}>Update!</span>}
+					</span>
+				</div>
 			</div>
+
+			<button
+				type="button"
+				className={styles.checkUpdateBtn}
+				onClick={checkForUpdate}
+				disabled={isChecking}
+			>
+				{isChecking ? "Checking..." : "Check for Updates"}
+			</button>
 
 			<div className={styles.buttonRow}>
 				<a

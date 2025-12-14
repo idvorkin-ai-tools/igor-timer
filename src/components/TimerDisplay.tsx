@@ -10,12 +10,13 @@ interface TimerDisplayProps {
 
 export function TimerDisplay({ phase, mainTime, previewTime, previewLabel }: TimerDisplayProps) {
 	const isResting = phase === "rest";
-	const phaseLabel = phase === "prep" ? "GET READY" : phase === "done" ? "DONE!" : phase === "idle" ? "WORK" : phase.toUpperCase();
+	// Only show label during active phases (prep, work, rest, done), not idle
+	const phaseLabel = phase === "prep" ? "GET READY" : phase === "done" ? "DONE!" : phase === "idle" ? "" : phase.toUpperCase();
 
 	return (
 		<main className={styles.timerDisplay}>
 			<div className={`${styles.workSection} ${isResting ? styles.resting : ""}`}>
-				<div className={styles.phaseLabel}>{phaseLabel}</div>
+				{phaseLabel && <div className={styles.phaseLabel}>{phaseLabel}</div>}
 				<div className={styles.mainTime}>{mainTime}</div>
 			</div>
 			<div className={`${styles.restPreview} ${isResting ? styles.working : ""}`}>

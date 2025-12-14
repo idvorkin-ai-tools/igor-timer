@@ -30,9 +30,9 @@
 
 .mainTime {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: clamp(100px, 28vw, 180px);
+  font-size: clamp(140px, 38vw, 240px);
   color: #000;
-  line-height: 0.9;
+  line-height: 0.85;
   letter-spacing: 2px;
 }
 

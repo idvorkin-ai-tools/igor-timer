@@ -1,10 +1,13 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { BugReporterProvider } from "./contexts/BugReporterContext";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
 	<StrictMode>
-		<App />
+		<BugReporterProvider>
+			<App />
+		</BugReporterProvider>
 	</StrictMode>,
 );
