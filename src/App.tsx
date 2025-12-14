@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppSettingsModal } from "./components/AppSettingsModal";
 import { BottomNav, type Mode } from "./components/BottomNav";
+import { BugReportDialog } from "./components/BugReportDialog";
 import { Controls } from "./components/Controls";
 import { GlobalHeader } from "./components/GlobalHeader";
 import { PresetSelector, type Preset } from "./components/PresetSelector";
@@ -9,6 +10,7 @@ import { TimerSettingsModal } from "./components/SettingsModal";
 import { Stopwatch } from "./components/Stopwatch";
 import { TimerDisplay } from "./components/TimerDisplay";
 import { TimerHeader } from "./components/TimerHeader";
+import { UpdateBanner } from "./components/UpdateBanner";
 import { type TimerProfile, useTimer } from "./hooks/useTimer";
 import { useWakeLock } from "./hooks/useWakeLock";
 
@@ -101,6 +103,8 @@ export default function App() {
 
 	return (
 		<>
+			<UpdateBanner />
+			<BugReportDialog />
 			<GlobalHeader onSettingsClick={() => setIsAppSettingsOpen(true)} />
 
 			{mode === "rounds" && (

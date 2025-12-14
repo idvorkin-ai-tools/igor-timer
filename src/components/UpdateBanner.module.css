@@ -1,0 +1,53 @@
+.banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--work-color);
+  color: #000;
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.message {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.updateBtn {
+  background: #000;
+  color: var(--work-color);
+  border: none;
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.updateBtn:hover {
+  opacity: 0.9;
+}
+
+.dismissBtn {
+  background: transparent;
+  color: #000;
+  border: 1px solid #000;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.dismissBtn:hover {
+  background: rgba(0, 0, 0, 0.1);
+}

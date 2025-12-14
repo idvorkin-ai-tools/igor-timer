@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "icons": "node scripts/generate-icons.js"
   },
   "keywords": [
@@ -22,10 +24,12 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@idvorkin/pwa-utils": "github:idvorkin/pwa-utils",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.5.2",
