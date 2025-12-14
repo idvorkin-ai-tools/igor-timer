@@ -43,23 +43,33 @@ describe("App", () => {
 		expect(screen.getByText("01:00")).toBeInTheDocument();
 	});
 
-	it("should open settings modal when settings button clicked", async () => {
+	it("should open timer settings modal when timer settings button clicked", async () => {
 		const user = userEvent.setup();
 		render(<App />);
 
-		await user.click(screen.getByLabelText("Settings"));
+		await user.click(screen.getByLabelText("Timer Settings"));
 
-		expect(screen.getByText("30 SEC SETTINGS")).toBeInTheDocument();
+		expect(screen.getByText("TIMER SETTINGS")).toBeInTheDocument();
 		expect(screen.getByText("WORK TIME (seconds)")).toBeInTheDocument();
 	});
 
-	it("should close settings modal when close button clicked", async () => {
+	it("should close timer settings modal when close button clicked", async () => {
+		const user = userEvent.setup();
+		render(<App />);
+
+		await user.click(screen.getByLabelText("Timer Settings"));
+		await user.click(screen.getByText("×"));
+
+		expect(screen.queryByText("TIMER SETTINGS")).not.toBeInTheDocument();
+	});
+
+	it("should open app settings modal when settings button clicked", async () => {
 		const user = userEvent.setup();
 		render(<App />);
 
 		await user.click(screen.getByLabelText("Settings"));
-		await user.click(screen.getByText("×"));
 
-		expect(screen.queryByText("30 SEC SETTINGS")).not.toBeInTheDocument();
+		expect(screen.getByText("SETTINGS")).toBeInTheDocument();
+		expect(screen.getByText("Igor Timer")).toBeInTheDocument();
 	});
 });
