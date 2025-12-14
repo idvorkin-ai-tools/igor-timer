@@ -1,0 +1,32 @@
+.presetBubbles {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--bg-darker);
+  justify-content: center;
+}
+
+.presetBtn {
+  padding: 8px 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: 'Oswald', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.presetBtn:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: var(--text-light);
+}
+
+.presetBtn.active {
+  background: var(--accent-green);
+  border-color: var(--accent-green);
+  color: #000;
+}

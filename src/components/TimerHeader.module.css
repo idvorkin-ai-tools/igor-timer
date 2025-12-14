@@ -1,0 +1,50 @@
+.timerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--bg-dark);
+}
+
+.headerBtn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+.headerBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text-light);
+}
+
+.headerBtn svg {
+  width: 22px;
+  height: 22px;
+}
+
+.headerCenter {
+  text-align: center;
+}
+
+.profileName {
+  font-family: 'Oswald', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-green);
+  letter-spacing: 1px;
+}
+
+.totalTime {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  color: var(--text-light);
+  letter-spacing: 2px;
+}

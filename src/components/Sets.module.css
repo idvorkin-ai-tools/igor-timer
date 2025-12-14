@@ -1,0 +1,162 @@
+.setsDisplay {
+  flex: 1;
+  background: var(--bg-dark);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 24px 20px;
+  gap: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.setsDisplay:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.setsDisplay:active {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.placeholder {
+  font-family: 'Oswald', sans-serif;
+  font-size: 18px;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  margin-top: 40px;
+}
+
+.tallyMarks {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.tallyGroup {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.verticalMarks {
+  display: flex;
+  gap: 12px;
+  height: 100px;
+}
+
+.tallyMark {
+  width: 24px;
+  height: 100%;
+  color: var(--accent-green);
+  filter: drop-shadow(0 0 2px rgba(0, 255, 136, 0.3));
+}
+
+.strikeThrough {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  color: var(--accent-green);
+  filter: drop-shadow(0 0 3px rgba(0, 255, 136, 0.4));
+  pointer-events: none;
+}
+
+.scratchyLine {
+  stroke-dasharray: 2, 0;
+  animation: scratchIn 0.3s ease-out;
+}
+
+@keyframes scratchIn {
+  0% {
+    stroke-dashoffset: 100;
+    opacity: 0;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+.maxedOut {
+  font-family: 'Oswald', sans-serif;
+  font-size: 16px;
+  color: var(--rest-color);
+  letter-spacing: 2px;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.controlsSection {
+  background: var(--bg-dark);
+  padding: 24px 20px;
+}
+
+.controlsRow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+}
+
+.controlBtn {
+  flex: 1;
+  max-width: 120px;
+  padding: 16px 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 12px;
+  color: var(--text-light);
+  font-family: 'Oswald', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.controlBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.02);
+}
+
+.controlBtn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.controlBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.addBtn {
+  background: var(--accent-green);
+  color: var(--bg-dark);
+  font-size: 24px;
+  font-weight: 700;
+  max-width: 80px;
+  padding: 20px;
+}
+
+.addBtn:hover:not(:disabled) {
+  background: var(--accent-green);
+  filter: brightness(1.1);
+}
+
+.resetBtn {
+  background: var(--rest-color);
+}
+
+.resetBtn:hover:not(:disabled) {
+  background: var(--rest-color);
+  filter: brightness(1.1);
+}

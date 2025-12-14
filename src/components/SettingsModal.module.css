@@ -1,0 +1,110 @@
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.modal {
+  background: var(--bg-dark);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modalTitle {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.modalClose {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-light);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modalBody {
+  padding: 20px;
+}
+
+.settingGroup {
+  margin-bottom: 24px;
+}
+
+.settingLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.settingInput {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settingInput input {
+  flex: 1;
+  background: var(--bg-darker);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-family: 'Oswald', sans-serif;
+  font-size: 24px;
+  color: var(--text-light);
+  text-align: center;
+  width: 100%;
+}
+
+.settingInput input:focus {
+  outline: none;
+  border-color: var(--accent-green);
+}
+
+.modalSave {
+  width: 100%;
+  padding: 16px;
+  background: var(--accent-green);
+  border: none;
+  border-radius: 12px;
+  font-family: 'Oswald', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #000;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.modalSave:hover {
+  transform: scale(1.02);
+}
