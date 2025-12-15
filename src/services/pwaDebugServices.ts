@@ -50,7 +50,7 @@ const versionInfo = {
 };
 
 // Initialize Session Recorder with memorable session name
-const sessionName = generateSessionName();
+export const sessionName = generateSessionName();
 
 export const sessionRecorder = new SessionRecorder({
 	dbName: `${APP_NAME}-sessions`,
