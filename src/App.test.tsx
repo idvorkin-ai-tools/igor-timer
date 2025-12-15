@@ -1,8 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { BugReporterProvider } from "./contexts/BugReporterContext";
+
+// Mock useVersionCheck to prevent act() warning from async state updates
+vi.mock("./hooks/useVersionCheck", () => ({
+	useVersionCheck: () => ({
+		updateAvailable: false,
+		applyUpdate: vi.fn(),
+		dismissUpdate: vi.fn(),
+	}),
+}));
 
 function renderApp() {
 	return render(
