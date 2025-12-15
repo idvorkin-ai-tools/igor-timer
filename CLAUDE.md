@@ -95,30 +95,13 @@ just deploy      # Deploy to surge.sh
 | Debug    | `src/services/pwaDebugServices.ts`   | Session recorder, bug reporter    |
 | Settings | `src/components/AppSettingsModal.tsx`| Debug tools UI                    |
 
-### iOS Audio
+### iOS Audio Architecture
 
-iOS Safari requires AudioContext resumed within user gesture. The `audioService` handles this:
-
-- Single global AudioContext (Safari limits to 4)
-- Auto-unlock on first tap/click
-- Handles suspended/interrupted states
-- **Records events to SessionRecorder** for debugging
-
-### Audio Event Types
-
-The audioService records typed events for debugging:
-
-| Event Type             | When Recorded                        |
-| ---------------------- | ------------------------------------ |
-| `audio:played`         | Beep successfully played             |
-| `audio:play_skipped`   | Context not running, play skipped    |
-| `audio:play_error`     | Oscillator creation failed           |
-| `audio:resuming`       | Starting context resume              |
-| `audio:resumed`        | Context successfully resumed         |
-| `audio:resume_failed`  | Resume threw an error                |
-| `audio:test_requested` | Test button clicked                  |
-| `audio:test_played`    | Test sound played successfully       |
-| `audio:test_failed`    | Test sound failed                    |
+iOS Safari has strict audio requirements. See **[tech/ios-audio-workaround.md](tech/ios-audio-workaround.md)** for full documentation including:
+- AudioContext states and unlock mechanisms
+- Timeout handling for hung `resume()` calls
+- Known iOS quirks and mitigations
+- Audio event types for debugging
 
 ---
 

@@ -147,5 +147,88 @@ describe("AudioService", () => {
 
 			expect(mockAudioContext.resume).toHaveBeenCalled();
 		});
+
+		it("should timeout if resume hangs forever", async () => {
+			// Make resume hang forever
+			mockAudioContext.resume = vi.fn().mockImplementation(() => new Promise(() => {}));
+
+			const { audioService } = await import("./audioService");
+
+			// Use fake timers to test timeout
+			vi.useFakeTimers();
+			const promise = audioService.ensureRunning();
+
+			// Fast-forward past the timeout
+			await vi.advanceTimersByTimeAsync(4000);
+
+			// Should resolve (not hang) even though resume never resolved
+			const ctx = await promise;
+			expect(ctx).toBeDefined();
+
+			vi.useRealTimers();
+		});
+
+		it("should reuse existing unlock promise if called multiple times", async () => {
+			const { audioService } = await import("./audioService");
+
+			// Call twice simultaneously
+			const promise1 = audioService.ensureRunning();
+			const promise2 = audioService.ensureRunning();
+
+			await Promise.all([promise1, promise2]);
+
+			// Should only call resume once
+			expect(mockAudioContext.resume).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe("testSound timeout", () => {
+		it("should timeout and return error if resume hangs", async () => {
+			// Make resume hang forever
+			mockAudioContext.resume = vi.fn().mockImplementation(() => new Promise(() => {}));
+
+			const { audioService } = await import("./audioService");
+
+			vi.useFakeTimers();
+			const promise = audioService.testSound();
+
+			// Fast-forward past timeout
+			await vi.advanceTimersByTimeAsync(4000);
+
+			const result = await promise;
+			expect(result.played).toBe(false);
+			expect(result.error).toContain("timeout");
+
+			vi.useRealTimers();
+		});
+	});
+
+	describe("visibility listener", () => {
+		it("should set up visibility change listener on context creation", async () => {
+			const addEventListenerSpy = vi.spyOn(document, "addEventListener");
+
+			const { audioService } = await import("./audioService");
+			audioService.prime(); // Create context
+
+			expect(addEventListenerSpy).toHaveBeenCalledWith(
+				"visibilitychange",
+				expect.any(Function)
+			);
+		});
+	});
+
+	describe("gesture listeners", () => {
+		it("should set up gesture listeners on context creation", async () => {
+			const addEventListenerSpy = vi.spyOn(document.body, "addEventListener");
+
+			const { audioService } = await import("./audioService");
+			audioService.prime();
+
+			// Should listen for touch, mouse, and keyboard events
+			const eventTypes = addEventListenerSpy.mock.calls.map(call => call[0]);
+			expect(eventTypes).toContain("touchstart");
+			expect(eventTypes).toContain("click");
+			expect(eventTypes).toContain("keydown");
+		});
 	});
 });
