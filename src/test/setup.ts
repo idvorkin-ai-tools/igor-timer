@@ -1,5 +1,8 @@
 import "@testing-library/jest-dom";
 
+// Mock canvas getContext to suppress jsdom warning about WebGL
+HTMLCanvasElement.prototype.getContext = () => null;
+
 // Mock AudioContext for tests
 class MockAudioContext {
 	createOscillator() {
