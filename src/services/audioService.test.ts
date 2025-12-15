@@ -11,6 +11,7 @@ class MockAudioContext {
 	state: "suspended" | "running" | "closed" = "suspended";
 	currentTime = 0;
 	destination = {};
+	private listeners: Map<string, Function[]> = new Map();
 
 	resume = vi.fn().mockImplementation(() => {
 		this.state = "running";
@@ -20,6 +21,13 @@ class MockAudioContext {
 	close = vi.fn().mockImplementation(() => {
 		this.state = "closed";
 		return Promise.resolve();
+	});
+
+	addEventListener = vi.fn().mockImplementation((event: string, handler: Function) => {
+		if (!this.listeners.has(event)) {
+			this.listeners.set(event, []);
+		}
+		this.listeners.get(event)!.push(handler);
 	});
 
 	createOscillator = vi.fn().mockReturnValue({
@@ -36,6 +44,14 @@ class MockAudioContext {
 			setValueAtTime: vi.fn(),
 			exponentialRampToValueAtTime: vi.fn(),
 		},
+	});
+
+	// For silent buffer warmup
+	createBuffer = vi.fn().mockReturnValue({});
+	createBufferSource = vi.fn().mockReturnValue({
+		buffer: null,
+		connect: vi.fn(),
+		start: vi.fn(),
 	});
 }
 
@@ -183,7 +199,7 @@ describe("AudioService", () => {
 	});
 
 	describe("testSound timeout", () => {
-		it("should timeout and return error if resume hangs", async () => {
+		it("should timeout and destroy context if resume hangs", async () => {
 			// Make resume hang forever
 			mockAudioContext.resume = vi.fn().mockImplementation(() => new Promise(() => {}));
 
@@ -197,7 +213,8 @@ describe("AudioService", () => {
 
 			const result = await promise;
 			expect(result.played).toBe(false);
-			expect(result.error).toContain("timeout");
+			// Context gets destroyed after timeout, so it reports destroyed state
+			expect(result.error).toContain("destroyed");
 
 			vi.useRealTimers();
 		});

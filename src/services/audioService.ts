@@ -8,7 +8,7 @@
  * - Single shared AudioContext (Safari limits to 4 max)
  * - Auto-unlock on first user gesture
  * - Handles suspended/interrupted/closed states
- * - Self-cleaning event listeners after unlock
+ * - Destroys and recreates context on resume failure (iOS recovery)
  * - Records audio events to session recorder for debugging
  *
  * Usage:
@@ -38,6 +38,9 @@ type AudioEventType =
 	| "audio:test_failed"
 	| "audio:silent_warmup";
 
+// Timeout for resume() calls - iOS Safari can hang indefinitely
+const RESUME_TIMEOUT_MS = 3000;
+
 // Helper to record audio events to session recorder
 function recordAudioEvent(type: AudioEventType, details?: Record<string, unknown>): void {
 	sessionRecorder.recordStateChange({
@@ -47,12 +50,8 @@ function recordAudioEvent(type: AudioEventType, details?: Record<string, unknown
 	});
 }
 
-// Timeout for resume() calls - iOS Safari can hang indefinitely
-const RESUME_TIMEOUT_MS = 3000;
-
 /**
  * Wrap a promise with a timeout - rejects if promise doesn't resolve in time
- * Used because iOS Safari resume() can hang forever
  */
 function withTimeout<T>(promise: Promise<T>, ms: number, errorMsg: string): Promise<T> {
 	return Promise.race([
@@ -66,7 +65,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number, errorMsg: string): Prom
 /**
  * Play a silent buffer to "warm up" the AudioContext on iOS Safari
  * iOS requires actual audio playback (not just resume()) to unlock the context
- * This is the proven pattern used by Howler.js and other audio libraries
  */
 function playSilentBuffer(ctx: AudioContext): void {
 	try {
@@ -77,7 +75,6 @@ function playSilentBuffer(ctx: AudioContext): void {
 		source.start(0);
 		recordAudioEvent("audio:silent_warmup", { state: ctx.state });
 	} catch (error) {
-		// Ignore errors - this is a best-effort unlock attempt
 		recordAudioEvent("audio:silent_warmup", {
 			state: ctx.state,
 			error: error instanceof Error ? error.message : String(error)
@@ -85,7 +82,7 @@ function playSilentBuffer(ctx: AudioContext): void {
 	}
 }
 
-// Convenience functions for common audio events (like swing-analyzer pattern)
+// Convenience functions for common audio events
 export function recordAudioPlayed(frequency: number, state: string): void {
 	recordAudioEvent("audio:played", { frequency, state });
 }
@@ -112,10 +109,11 @@ export function recordAudioError(error: string, frequency?: number): void {
 
 class AudioService {
 	private context: AudioContext | null = null;
-	private unlockPromise: Promise<void> | null = null;
+	private unlockPromise: Promise<boolean> | null = null;
 	private unlockListenersAttached = false;
 	private visibilityListenerAttached = false;
-	private resumeInProgress = false; // Prevent parallel resume() calls
+	private resumeInProgress = false;
+	private audioUnlocked = false;
 
 	/**
 	 * Get or create the global AudioContext
@@ -129,16 +127,16 @@ class AudioService {
 			this.context = new AudioContextClass();
 			recordAudioEvent("audio:context_created", { state: this.context.state });
 
-			// Set up auto-unlock listeners on creation
 			this.setupUnlockListeners();
 			this.setupVisibilityListener();
+			this.setupStateChangeListener();
 		}
 		return this.context;
 	}
 
 	/**
 	 * Destroy context so it can be recreated fresh
-	 * Used when iOS audio device fails and context is unrecoverable
+	 * Called on ANY resume failure - iOS contexts get stuck and won't recover
 	 */
 	private destroyContext(): void {
 		if (this.context) {
@@ -155,8 +153,70 @@ class AudioService {
 	}
 
 	/**
-	 * Set up visibility change listener to resume audio when user returns to tab
-	 * iOS Safari may set context to "interrupted" when user switches tabs
+	 * Core resume logic - DRY helper used by all resume paths
+	 * Returns true if context is now running, false otherwise
+	 */
+	private async attemptResume(trigger: string): Promise<boolean> {
+		const ctx = this.context;
+		if (!ctx) return false;
+
+		const state = ctx.state as AudioContextState;
+
+		// Already running
+		if (state === "running") {
+			return true;
+		}
+
+		// Skip if another resume is in progress
+		if (this.resumeInProgress) {
+			// Wait for existing resume if there's a promise
+			if (this.unlockPromise) {
+				return this.unlockPromise;
+			}
+			return false;
+		}
+
+		// Only resume from suspended/interrupted states
+		if (state !== "suspended" && state !== "interrupted") {
+			return false;
+		}
+
+		this.resumeInProgress = true;
+		recordAudioEvent("audio:resuming", { trigger, fromState: state });
+		playSilentBuffer(ctx);
+
+		try {
+			await withTimeout(ctx.resume(), RESUME_TIMEOUT_MS, `Resume timeout (${trigger})`);
+			this.audioUnlocked = true;
+			recordAudioResumed(ctx.state);
+			return ctx.state === "running";
+		} catch (error) {
+			const errorMsg = error instanceof Error ? error.message : String(error);
+			recordAudioResumeFailed(errorMsg, state);
+			// Context is stuck - destroy it so next attempt gets a fresh one
+			this.destroyContext();
+			return false;
+		} finally {
+			this.resumeInProgress = false;
+		}
+	}
+
+	/**
+	 * Listen for AudioContext state changes (pattern from Howler.js PR #1770)
+	 */
+	private setupStateChangeListener(): void {
+		if (!this.context?.addEventListener) return;
+
+		this.context.addEventListener("statechange", () => {
+			if (!this.context || this.context.state === "running" || !this.audioUnlocked) {
+				return;
+			}
+			this.attemptResume("statechange");
+		});
+	}
+
+	/**
+	 * Resume audio when user returns to tab
 	 */
 	private setupVisibilityListener(): void {
 		if (this.visibilityListenerAttached) return;
@@ -164,138 +224,47 @@ class AudioService {
 
 		document.addEventListener("visibilitychange", () => {
 			if (document.visibilityState === "visible" && this.context) {
-				const state = this.context.state as AudioContextState;
-				if (state === "interrupted" || state === "suspended") {
-					// Skip if another resume is already in progress (prevents cascade)
-					if (this.resumeInProgress) {
-						return;
-					}
-					this.resumeInProgress = true;
-					recordAudioEvent("audio:resuming", { trigger: "visibility", fromState: state });
-					playSilentBuffer(this.context);
-					withTimeout(this.context.resume(), RESUME_TIMEOUT_MS, "Resume timeout (visibility)")
-						.then(() => recordAudioResumed(this.context?.state ?? "unknown"))
-						.catch((err) => {
-							recordAudioResumeFailed(String(err), state);
-							// If audio device failed, destroy context for recovery
-							const errorMsg = String(err);
-							if (errorMsg.includes("Failed to start") || errorMsg.includes("audio device")) {
-								this.destroyContext();
-							}
-						})
-						.finally(() => {
-							this.resumeInProgress = false;
-						});
-				}
+				this.attemptResume("visibility");
 			}
 		});
 	}
 
 	/**
-	 * Set up event listeners to unlock audio on ANY user gesture
-	 * Listeners stay attached to handle iOS re-interruption scenarios
+	 * Unlock audio on ANY user gesture
 	 */
 	private setupUnlockListeners(): void {
 		if (this.unlockListenersAttached) return;
 		this.unlockListenersAttached = true;
 
 		const events = ["touchstart", "touchend", "mousedown", "keydown", "click"];
-
-		const attemptUnlock = async () => {
-			const ctx = this.context;
-			if (!ctx) return;
-
-			const state = ctx.state as AudioContextState;
-			// Already running - nothing to do
-			if (state === "running") {
-				return;
-			}
-
-			// Skip if another resume is already in progress (prevents cascade)
-			if (this.resumeInProgress) {
-				return;
-			}
-
-			// Try to resume on suspended or interrupted
-			if (state === "suspended" || state === "interrupted") {
-				try {
-					this.resumeInProgress = true;
-					recordAudioEvent("audio:resuming", { trigger: "gesture", fromState: state });
-					// Play silent buffer FIRST to "warm up" iOS Safari
-					// This is the proven pattern - resume() alone often fails on iOS
-					playSilentBuffer(ctx);
-					await withTimeout(ctx.resume(), RESUME_TIMEOUT_MS, "Resume timeout (gesture)");
-					recordAudioResumed(ctx.state);
-					// Don't remove listeners - iOS can re-interrupt anytime
-				} catch (error) {
-					const errorMsg = error instanceof Error ? error.message : String(error);
-					recordAudioResumeFailed(errorMsg, state);
-					// If audio device failed, destroy context so it gets recreated
-					if (errorMsg.includes("Failed to start") || errorMsg.includes("audio device")) {
-						this.destroyContext();
-					}
-					// Will retry on next gesture
-				} finally {
-					this.resumeInProgress = false;
-				}
-			}
-		};
-
 		events.forEach((event) =>
-			document.body.addEventListener(event, attemptUnlock, { passive: true }),
+			document.body.addEventListener(event, () => this.attemptResume("gesture"), { passive: true }),
 		);
 	}
 
 	/**
 	 * Ensure AudioContext is running before playing audio
-	 * Safe to call multiple times - will reuse existing unlock promise
-	 * Includes timeout because iOS Safari resume() can hang indefinitely
 	 */
 	async ensureRunning(): Promise<AudioContext> {
 		const ctx = this.getContext();
-		const state = ctx.state as AudioContextState;
 
-		if (state === "running") {
+		if (ctx.state === "running") {
 			return ctx;
 		}
 
-		// Handle suspended or interrupted states
-		if (state === "suspended" || state === "interrupted") {
-			recordAudioEvent("audio:resuming", { trigger: "ensureRunning", fromState: state });
-			// Play silent buffer to warm up iOS Safari before resume
-			playSilentBuffer(ctx);
-			// Reuse existing unlock promise if one is in progress
-			if (!this.unlockPromise) {
-				this.resumeInProgress = true;
-				this.unlockPromise = withTimeout(
-					ctx.resume(),
-					RESUME_TIMEOUT_MS,
-					"Resume timeout (ensureRunning)"
-				).finally(() => {
-					this.unlockPromise = null;
-					this.resumeInProgress = false;
-				});
-			}
-
-			try {
-				await this.unlockPromise;
-				recordAudioResumed(this.context?.state ?? "unknown");
-			} catch (error) {
-				const errorMsg = error instanceof Error ? error.message : String(error);
-				recordAudioResumeFailed(errorMsg, state);
-				// If audio device failed, destroy context so it gets recreated on next attempt
-				if (errorMsg.includes("Failed to start") || errorMsg.includes("audio device")) {
-					this.destroyContext();
-				}
-			}
+		// Create shared promise so parallel calls don't race
+		if (!this.unlockPromise) {
+			this.unlockPromise = this.attemptResume("ensureRunning").finally(() => {
+				this.unlockPromise = null;
+			});
 		}
 
-		return this.getContext(); // Return fresh context if destroyed
+		await this.unlockPromise;
+		return this.getContext();
 	}
 
 	/**
-	 * Play a beep sound with the given parameters
-	 * Handles all unlock logic internally
+	 * Play a beep sound
 	 */
 	playBeep(
 		frequency = 880,
@@ -306,47 +275,29 @@ class AudioService {
 		const ctx = this.getContext();
 		const state = ctx.state as AudioContextState;
 
-		// If context needs resuming, await it before playing
-		// This is critical - resume() is async and we must wait for it
+		if (state === "running") {
+			this.doPlayBeep(ctx, frequency, duration, type, volume);
+			return;
+		}
+
 		if (state === "suspended" || state === "interrupted") {
-			// Skip if resume already in progress (will be handled by that call)
 			if (this.resumeInProgress) {
 				recordAudioPlaySkipped("resume_in_progress", state);
 				return;
 			}
-			recordAudioResuming(state);
-			this.resumeInProgress = true;
-			playSilentBuffer(ctx);
-			withTimeout(ctx.resume(), RESUME_TIMEOUT_MS, "Resume timeout (playBeep)")
-				.then(() => {
-					recordAudioResumed(ctx.state);
-					this.doPlayBeep(ctx, frequency, duration, type, volume);
-				})
-				.catch((error) => {
-					const errorMsg = error instanceof Error ? error.message : String(error);
-					recordAudioResumeFailed(errorMsg, state);
-					// If audio device failed, destroy context for recovery
-					if (errorMsg.includes("Failed to start") || errorMsg.includes("audio device")) {
-						this.destroyContext();
-					}
-				})
-				.finally(() => {
-					this.resumeInProgress = false;
-				});
+			this.attemptResume("playBeep").then((success) => {
+				if (success && this.context?.state === "running") {
+					this.doPlayBeep(this.context, frequency, duration, type, volume);
+				}
+			});
 			return;
 		}
 
-		// Context already running - play immediately
-		if (ctx.state === "running") {
-			this.doPlayBeep(ctx, frequency, duration, type, volume);
-		} else {
-			// Unexpected state - not suspended, not running
-			recordAudioPlaySkipped("unexpected_state", ctx.state);
-		}
+		recordAudioPlaySkipped("unexpected_state", ctx.state);
 	}
 
 	/**
-	 * Internal method to actually play the beep
+	 * Actually play the beep
 	 */
 	private doPlayBeep(
 		ctx: AudioContext,
@@ -355,7 +306,6 @@ class AudioService {
 		type: OscillatorType,
 		volume: number,
 	): void {
-		// Double-check context is still valid and running
 		if (ctx.state !== "running") {
 			recordAudioPlaySkipped("not_running", ctx.state);
 			return;
@@ -369,36 +319,29 @@ class AudioService {
 			oscillator.frequency.value = frequency;
 			oscillator.type = type;
 			gainNode.gain.setValueAtTime(volume, ctx.currentTime);
-			gainNode.gain.exponentialRampToValueAtTime(
-				0.01,
-				ctx.currentTime + duration,
-			);
+			gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
 			oscillator.start(ctx.currentTime);
 			oscillator.stop(ctx.currentTime + duration);
 			recordAudioPlayed(frequency, ctx.state);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			recordAudioError(errorMsg, frequency);
-			// If playback fails, destroy context so it gets recreated
 			this.destroyContext();
 		}
 	}
 
 	/**
-	 * Prime the audio context - call on app startup or first user interaction
-	 * This ensures the context exists and unlock listeners are attached
+	 * Prime the audio context on app startup
 	 */
 	prime(): void {
 		this.getContext();
 	}
 
 	/**
-	 * Test sound - plays a recognizable beep and logs diagnostic info
-	 * Useful for debugging audio issues on iOS
-	 * Returns a promise that resolves when the sound has been played (or failed)
+	 * Test sound - plays a beep and returns diagnostic info
 	 */
 	async testSound(): Promise<{ state: string; played: boolean; error?: string }> {
-		let ctx = this.getContext();
+		const ctx = this.getContext();
 		const initialState = ctx.state;
 
 		recordAudioEvent("audio:test_requested", {
@@ -408,54 +351,26 @@ class AudioService {
 		});
 
 		try {
-			// Resume if needed and wait for it (with timeout - iOS can hang)
-			if (ctx.state !== "running") {
-				// If resume already in progress, wait for it instead of starting another
-				if (this.unlockPromise) {
-					await this.unlockPromise;
-				} else {
-					this.resumeInProgress = true;
-					recordAudioResuming(ctx.state);
-					playSilentBuffer(ctx);
-					try {
-						await withTimeout(ctx.resume(), RESUME_TIMEOUT_MS, "Resume timeout (testSound)");
-						recordAudioResumed(ctx.state);
-					} finally {
-						this.resumeInProgress = false;
-					}
-				}
-				// Re-get context in case it was destroyed during resume
-				ctx = this.getContext();
+			const success = await this.attemptResume("testSound");
+
+			if (success && this.context?.state === "running") {
+				this.doPlayBeep(this.context, 440, 0.3, "sine", 0.8);
+				recordAudioEvent("audio:test_played", { state: this.context.state });
+				return { state: this.context.state, played: true };
 			}
 
-			// Now try to play
-			if (ctx.state === "running") {
-				this.doPlayBeep(ctx, 440, 0.3, "sine", 0.8); // A4 note, 300ms
-				recordAudioEvent("audio:test_played", { state: ctx.state });
-				return { state: ctx.state, played: true };
-			}
-
-			recordAudioEvent("audio:test_failed", {
-				reason: "not_running_after_resume",
-				state: ctx.state
-			});
-			return { state: ctx.state, played: false, error: `Context state: ${ctx.state}` };
+			const finalState = this.context?.state ?? "destroyed";
+			recordAudioEvent("audio:test_failed", { reason: "not_running", state: finalState });
+			return { state: finalState, played: false, error: `Context state: ${finalState}` };
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
-			recordAudioEvent("audio:test_failed", {
-				error: errorMsg,
-				initialState
-			});
-			// If audio device failed, destroy context for recovery on next attempt
-			if (errorMsg.includes("Failed to start") || errorMsg.includes("audio device")) {
-				this.destroyContext();
-			}
+			recordAudioEvent("audio:test_failed", { error: errorMsg, initialState });
 			return { state: initialState, played: false, error: errorMsg };
 		}
 	}
 
 	/**
-	 * Get current audio context state for diagnostics
+	 * Get current state for diagnostics
 	 */
 	getState(): { contextExists: boolean; state: string | null; unlockListenersAttached: boolean } {
 		return {
@@ -466,5 +381,4 @@ class AudioService {
 	}
 }
 
-// Export singleton instance
 export const audioService = new AudioService();
