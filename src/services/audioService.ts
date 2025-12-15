@@ -149,6 +149,7 @@ class AudioService {
 			this.context = null;
 			this.unlockPromise = null;
 			this.resumeInProgress = false;
+			this.audioUnlocked = false; // Reset so statechange listener doesn't auto-resume new context
 		}
 	}
 
@@ -156,49 +157,51 @@ class AudioService {
 	 * Core resume logic - DRY helper used by all resume paths
 	 * Returns true if context is now running, false otherwise
 	 */
-	private async attemptResume(trigger: string): Promise<boolean> {
+	private attemptResume(trigger: string): Promise<boolean> {
 		const ctx = this.context;
-		if (!ctx) return false;
+		if (!ctx) return Promise.resolve(false);
 
 		const state = ctx.state as AudioContextState;
 
 		// Already running
 		if (state === "running") {
-			return true;
+			return Promise.resolve(true);
 		}
 
-		// Skip if another resume is in progress
-		if (this.resumeInProgress) {
-			// Wait for existing resume if there's a promise
-			if (this.unlockPromise) {
-				return this.unlockPromise;
-			}
-			return false;
+		// If another resume is in progress, wait for it
+		if (this.unlockPromise) {
+			return this.unlockPromise;
 		}
 
 		// Only resume from suspended/interrupted states
 		if (state !== "suspended" && state !== "interrupted") {
-			return false;
+			return Promise.resolve(false);
 		}
 
+		// Create promise that other callers can wait on
 		this.resumeInProgress = true;
 		recordAudioEvent("audio:resuming", { trigger, fromState: state });
 		playSilentBuffer(ctx);
 
-		try {
-			await withTimeout(ctx.resume(), RESUME_TIMEOUT_MS, `Resume timeout (${trigger})`);
-			this.audioUnlocked = true;
-			recordAudioResumed(ctx.state);
-			return ctx.state === "running";
-		} catch (error) {
-			const errorMsg = error instanceof Error ? error.message : String(error);
-			recordAudioResumeFailed(errorMsg, state);
-			// Context is stuck - destroy it so next attempt gets a fresh one
-			this.destroyContext();
-			return false;
-		} finally {
-			this.resumeInProgress = false;
-		}
+		this.unlockPromise = withTimeout(ctx.resume(), RESUME_TIMEOUT_MS, `Resume timeout (${trigger})`)
+			.then(() => {
+				this.audioUnlocked = true;
+				recordAudioResumed(ctx.state);
+				return ctx.state === "running";
+			})
+			.catch((error) => {
+				const errorMsg = error instanceof Error ? error.message : String(error);
+				recordAudioResumeFailed(errorMsg, state);
+				// Context is stuck - destroy it so next attempt gets a fresh one
+				this.destroyContext();
+				return false;
+			})
+			.finally(() => {
+				this.resumeInProgress = false;
+				this.unlockPromise = null;
+			});
+
+		return this.unlockPromise;
 	}
 
 	/**
@@ -252,14 +255,7 @@ class AudioService {
 			return ctx;
 		}
 
-		// Create shared promise so parallel calls don't race
-		if (!this.unlockPromise) {
-			this.unlockPromise = this.attemptResume("ensureRunning").finally(() => {
-				this.unlockPromise = null;
-			});
-		}
-
-		await this.unlockPromise;
+		await this.attemptResume("ensureRunning");
 		return this.getContext();
 	}
 
