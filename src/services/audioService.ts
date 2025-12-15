@@ -46,6 +46,22 @@ function recordAudioEvent(type: AudioEventType, details?: Record<string, unknown
 	});
 }
 
+// Timeout for resume() calls - iOS Safari can hang indefinitely
+const RESUME_TIMEOUT_MS = 3000;
+
+/**
+ * Wrap a promise with a timeout - rejects if promise doesn't resolve in time
+ * Used because iOS Safari resume() can hang forever
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, errorMsg: string): Promise<T> {
+	return Promise.race([
+		promise,
+		new Promise<T>((_, reject) =>
+			setTimeout(() => reject(new Error(errorMsg)), ms)
+		),
+	]);
+}
+
 // Convenience functions for common audio events (like swing-analyzer pattern)
 export function recordAudioPlayed(frequency: number, state: string): void {
 	recordAudioEvent("audio:played", { frequency, state });
@@ -75,6 +91,7 @@ class AudioService {
 	private context: AudioContext | null = null;
 	private unlockPromise: Promise<void> | null = null;
 	private unlockListenersAttached = false;
+	private visibilityListenerAttached = false;
 
 	/**
 	 * Get or create the global AudioContext
@@ -89,13 +106,35 @@ class AudioService {
 
 			// Set up auto-unlock listeners on creation
 			this.setupUnlockListeners();
+			this.setupVisibilityListener();
 		}
 		return this.context;
 	}
 
 	/**
-	 * Set up event listeners to unlock audio on first user gesture
-	 * Listeners remove themselves after successful unlock
+	 * Set up visibility change listener to resume audio when user returns to tab
+	 * iOS Safari may set context to "interrupted" when user switches tabs
+	 */
+	private setupVisibilityListener(): void {
+		if (this.visibilityListenerAttached) return;
+		this.visibilityListenerAttached = true;
+
+		document.addEventListener("visibilitychange", () => {
+			if (document.visibilityState === "visible" && this.context) {
+				const state = this.context.state as AudioContextState;
+				if (state === "interrupted" || state === "suspended") {
+					recordAudioEvent("audio:resuming", { trigger: "visibility", fromState: state });
+					withTimeout(this.context.resume(), RESUME_TIMEOUT_MS, "Resume timeout (visibility)")
+						.then(() => recordAudioResumed(this.context?.state ?? "unknown"))
+						.catch((err) => recordAudioResumeFailed(String(err), state));
+				}
+			}
+		});
+	}
+
+	/**
+	 * Set up event listeners to unlock audio on ANY user gesture
+	 * Listeners stay attached to handle iOS re-interruption scenarios
 	 */
 	private setupUnlockListeners(): void {
 		if (this.unlockListenersAttached) return;
@@ -108,28 +147,24 @@ class AudioService {
 			if (!ctx) return;
 
 			const state = ctx.state as AudioContextState;
+			// Already running - nothing to do
 			if (state === "running") {
-				cleanup();
 				return;
 			}
 
+			// Try to resume on suspended or interrupted
 			if (state === "suspended" || state === "interrupted") {
 				try {
-					await ctx.resume();
-					if (ctx.state === "running") {
-						cleanup();
-					}
+					recordAudioEvent("audio:resuming", { trigger: "gesture", fromState: state });
+					await withTimeout(ctx.resume(), RESUME_TIMEOUT_MS, "Resume timeout (gesture)");
+					recordAudioResumed(ctx.state);
+					// Don't remove listeners - iOS can re-interrupt anytime
 				} catch (error) {
-					console.warn("AudioContext unlock attempt failed:", error);
+					const errorMsg = error instanceof Error ? error.message : String(error);
+					recordAudioResumeFailed(errorMsg, state);
+					// Will retry on next gesture
 				}
 			}
-		};
-
-		const cleanup = () => {
-			events.forEach((event) =>
-				document.body.removeEventListener(event, attemptUnlock),
-			);
-			this.unlockListenersAttached = false;
 		};
 
 		events.forEach((event) =>
@@ -140,6 +175,7 @@ class AudioService {
 	/**
 	 * Ensure AudioContext is running before playing audio
 	 * Safe to call multiple times - will reuse existing unlock promise
+	 * Includes timeout because iOS Safari resume() can hang indefinitely
 	 */
 	async ensureRunning(): Promise<AudioContext> {
 		const ctx = this.getContext();
@@ -153,7 +189,11 @@ class AudioService {
 		if (state === "suspended" || state === "interrupted") {
 			// Reuse existing unlock promise if one is in progress
 			if (!this.unlockPromise) {
-				this.unlockPromise = ctx.resume().finally(() => {
+				this.unlockPromise = withTimeout(
+					ctx.resume(),
+					RESUME_TIMEOUT_MS,
+					"Resume timeout (ensureRunning)"
+				).finally(() => {
 					this.unlockPromise = null;
 				});
 			}
@@ -161,7 +201,8 @@ class AudioService {
 			try {
 				await this.unlockPromise;
 			} catch (error) {
-				console.warn("AudioContext resume failed:", error);
+				const errorMsg = error instanceof Error ? error.message : String(error);
+				recordAudioResumeFailed(errorMsg, state);
 			}
 		}
 
@@ -275,10 +316,10 @@ class AudioService {
 		});
 
 		try {
-			// Resume if needed and wait for it
+			// Resume if needed and wait for it (with timeout - iOS can hang)
 			if (ctx.state !== "running") {
 				recordAudioResuming(ctx.state);
-				await ctx.resume();
+				await withTimeout(ctx.resume(), RESUME_TIMEOUT_MS, "Resume timeout (testSound)");
 				recordAudioResumed(ctx.state);
 			}
 

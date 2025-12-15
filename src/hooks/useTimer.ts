@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { audioService } from "../services/audioService";
 import { useAudio } from "./useAudio";
 
 export type Phase = "idle" | "prep" | "work" | "rest" | "done";
@@ -148,6 +149,12 @@ export function useTimer(profile: TimerProfile) {
 	}, [playCountdownBeep, playStartBeep, playEndBeep, playFinishBeep, clearTimer]);
 
 	const start = useCallback(() => {
+		// iOS Safari: MUST unlock audio during user gesture, BEFORE any timer/interval
+		// This is the only place we can reliably resume AudioContext
+		// Fire-and-forget: don't await to avoid blocking UI, but the resume happens
+		// synchronously within the user gesture context which is what iOS requires
+		audioService.ensureRunning();
+
 		const currentState = stateRef.current;
 
 		let newState: TimerState;
