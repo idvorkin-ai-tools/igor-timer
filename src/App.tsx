@@ -111,7 +111,7 @@ export default function App() {
 					<TimerHeader
 						profileName={profile.name}
 						totalTime={formatTime(remainingTime)}
-						onSettingsClick={() => setIsTimerSettingsOpen(true)}
+						onSettingsClick={() => setIsAppSettingsOpen(true)}
 						onResetClick={handleReset}
 					/>
 
@@ -119,7 +119,7 @@ export default function App() {
 						presets={PRESETS}
 						activePreset={activePreset}
 						onSelect={handlePresetSelect}
-						onSettingsClick={() => setIsAppSettingsOpen(true)}
+						onSettingsClick={() => setIsTimerSettingsOpen(true)}
 					/>
 
 					<TimerDisplay
