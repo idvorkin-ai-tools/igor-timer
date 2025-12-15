@@ -107,7 +107,7 @@ describe("AudioService", () => {
 	describe("testSound", () => {
 		it("should return state information", async () => {
 			const { audioService } = await import("./audioService");
-			const result = audioService.testSound();
+			const result = await audioService.testSound();
 
 			expect(result).toHaveProperty("state");
 			expect(result).toHaveProperty("played");
@@ -116,17 +116,17 @@ describe("AudioService", () => {
 		it("should play immediately when context is running", async () => {
 			mockAudioContext.state = "running";
 			const { audioService } = await import("./audioService");
-			const result = audioService.testSound();
+			const result = await audioService.testSound();
 
 			expect(result.played).toBe(true);
 			expect(mockAudioContext.createOscillator).toHaveBeenCalled();
 		});
 
-		it("should attempt resume when context is suspended", async () => {
+		it("should resume and play when context is suspended", async () => {
 			const { audioService } = await import("./audioService");
-			const result = audioService.testSound();
+			const result = await audioService.testSound();
 
-			expect(result.played).toBe(false);
+			expect(result.played).toBe(true);
 			expect(mockAudioContext.resume).toHaveBeenCalled();
 		});
 	});

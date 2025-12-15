@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useBugReporter } from "../contexts/BugReporterContext";
 import { audioService } from "../services/audioService";
-import { sessionRecorder } from "../services/pwaDebugServices";
+import { sessionName, sessionRecorder } from "../services/pwaDebugServices";
 import { AboutSection } from "./AboutSection";
 import styles from "./SettingsModal.module.css";
 
@@ -17,6 +18,7 @@ export function AppSettingsModal({ isOpen, onClose }: AppSettingsModalProps) {
 		requestShakePermission,
 		showDialog,
 	} = useBugReporter();
+	const [audioTestStatus, setAudioTestStatus] = useState<"idle" | "testing" | "success" | "failed">("idle");
 
 	if (!isOpen) return null;
 
@@ -82,13 +84,24 @@ export function AppSettingsModal({ isOpen, onClose }: AppSettingsModalProps) {
 						<h3 className={styles.sectionTitle}>Debug</h3>
 
 						<div className={styles.settingRow}>
-							<span className={styles.settingLabel}>Audio: {audioService.getState().state ?? "not initialized"}</span>
+							<span className={styles.settingLabel}>
+								Audio: {audioService.getState().state ?? "not initialized"}
+								{audioTestStatus === "success" && " ✓"}
+								{audioTestStatus === "failed" && " ✗"}
+							</span>
 							<button
 								type="button"
-								className={styles.toggle}
-								onClick={() => audioService.testSound()}
+								className={`${styles.toggle} ${audioTestStatus === "success" ? styles.toggleOn : ""}`}
+								disabled={audioTestStatus === "testing"}
+								onClick={async () => {
+									setAudioTestStatus("testing");
+									const result = await audioService.testSound();
+									setAudioTestStatus(result.played ? "success" : "failed");
+									// Reset after 2 seconds
+									setTimeout(() => setAudioTestStatus("idle"), 2000);
+								}}
 							>
-								Test
+								{audioTestStatus === "testing" ? "..." : "Test"}
 							</button>
 						</div>
 
@@ -102,7 +115,7 @@ export function AppSettingsModal({ isOpen, onClose }: AppSettingsModalProps) {
 									url = URL.createObjectURL(blob);
 									const a = document.createElement("a");
 									a.href = url;
-									a.download = `session-${Date.now()}.json`;
+									a.download = `${sessionName}.json`;
 									a.click();
 								} catch (error) {
 									console.error("Failed to download session recording:", error);

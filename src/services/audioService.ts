@@ -9,6 +9,7 @@
  * - Auto-unlock on first user gesture
  * - Handles suspended/interrupted/closed states
  * - Self-cleaning event listeners after unlock
+ * - Records audio events to session recorder for debugging
  *
  * Usage:
  *   import { audioService } from './services/audioService';
@@ -18,7 +19,57 @@
  * @see https://www.mattmontag.com/web/unlock-web-audio-in-safari-for-ios-and-macos
  */
 
+import { sessionRecorder } from "./pwaDebugServices";
+
 type AudioContextState = "suspended" | "running" | "closed" | "interrupted";
+
+// Audio event types for session recording
+type AudioEventType =
+	| "audio:played"
+	| "audio:play_skipped"
+	| "audio:play_error"
+	| "audio:resuming"
+	| "audio:resumed"
+	| "audio:resume_failed"
+	| "audio:context_created"
+	| "audio:context_closed"
+	| "audio:test_requested"
+	| "audio:test_played"
+	| "audio:test_failed";
+
+// Helper to record audio events to session recorder
+function recordAudioEvent(type: AudioEventType, details?: Record<string, unknown>): void {
+	sessionRecorder.recordStateChange({
+		type,
+		timestamp: Date.now(),
+		details,
+	});
+}
+
+// Convenience functions for common audio events (like swing-analyzer pattern)
+export function recordAudioPlayed(frequency: number, state: string): void {
+	recordAudioEvent("audio:played", { frequency, state });
+}
+
+export function recordAudioPlaySkipped(reason: string, state: string): void {
+	recordAudioEvent("audio:play_skipped", { reason, state });
+}
+
+export function recordAudioResuming(fromState: string): void {
+	recordAudioEvent("audio:resuming", { fromState });
+}
+
+export function recordAudioResumed(newState: string): void {
+	recordAudioEvent("audio:resumed", { newState });
+}
+
+export function recordAudioResumeFailed(error: string, fromState: string): void {
+	recordAudioEvent("audio:resume_failed", { error, fromState });
+}
+
+export function recordAudioError(error: string, frequency?: number): void {
+	recordAudioEvent("audio:play_error", { error, frequency });
+}
 
 class AudioService {
 	private context: AudioContext | null = null;
@@ -133,10 +184,15 @@ class AudioService {
 		// If context needs resuming, await it before playing
 		// This is critical - resume() is async and we must wait for it
 		if (state === "suspended" || state === "interrupted") {
+			recordAudioResuming(state);
 			ctx.resume()
-				.then(() => this.doPlayBeep(ctx, frequency, duration, type, volume))
+				.then(() => {
+					recordAudioResumed(ctx.state);
+					this.doPlayBeep(ctx, frequency, duration, type, volume);
+				})
 				.catch((error) => {
-					console.warn("AudioContext resume failed in playBeep:", error);
+					const errorMsg = error instanceof Error ? error.message : String(error);
+					recordAudioResumeFailed(errorMsg, state);
 				});
 			return;
 		}
@@ -144,6 +200,9 @@ class AudioService {
 		// Context already running - play immediately
 		if (ctx.state === "running") {
 			this.doPlayBeep(ctx, frequency, duration, type, volume);
+		} else {
+			// Unexpected state - not suspended, not running
+			recordAudioPlaySkipped("unexpected_state", ctx.state);
 		}
 	}
 
@@ -159,6 +218,7 @@ class AudioService {
 	): void {
 		// Double-check context is still valid and running
 		if (ctx.state !== "running") {
+			recordAudioPlaySkipped("not_running", ctx.state);
 			return;
 		}
 
@@ -176,8 +236,10 @@ class AudioService {
 			);
 			oscillator.start(ctx.currentTime);
 			oscillator.stop(ctx.currentTime + duration);
+			recordAudioPlayed(frequency, ctx.state);
 		} catch (error) {
-			console.warn("Audio playback failed:", error);
+			const errorMsg = error instanceof Error ? error.message : String(error);
+			recordAudioError(errorMsg, frequency);
 			// If playback fails, destroy context so it gets recreated
 			if (this.context) {
 				try {
@@ -201,43 +263,43 @@ class AudioService {
 	/**
 	 * Test sound - plays a recognizable beep and logs diagnostic info
 	 * Useful for debugging audio issues on iOS
+	 * Returns a promise that resolves when the sound has been played (or failed)
 	 */
-	testSound(): { state: string; played: boolean; error?: string } {
+	async testSound(): Promise<{ state: string; played: boolean; error?: string }> {
 		const ctx = this.getContext();
 		const initialState = ctx.state;
 
-		console.log("[AudioService] Test sound requested", {
-			contextState: initialState,
+		recordAudioEvent("audio:test_requested", {
+			initialState,
 			contextExists: !!this.context,
 		});
 
 		try {
-			// Try to play immediately if running
-			if (ctx.state === "running") {
-				this.doPlayBeep(ctx, 440, 0.3, "sine", 0.8); // A4 note, 300ms
-				console.log("[AudioService] Test sound played successfully");
-				return { state: initialState, played: true };
+			// Resume if needed and wait for it
+			if (ctx.state !== "running") {
+				recordAudioResuming(ctx.state);
+				await ctx.resume();
+				recordAudioResumed(ctx.state);
 			}
 
-			// Try to resume and play
-			ctx.resume()
-				.then(() => {
-					console.log("[AudioService] Context resumed, state:", ctx.state);
-					if (ctx.state === "running") {
-						this.doPlayBeep(ctx, 440, 0.3, "sine", 0.8);
-						console.log("[AudioService] Test sound played after resume");
-					} else {
-						console.warn("[AudioService] Context not running after resume:", ctx.state);
-					}
-				})
-				.catch((error) => {
-					console.warn("[AudioService] Resume failed during test:", error);
-				});
+			// Now try to play
+			if (ctx.state === "running") {
+				this.doPlayBeep(ctx, 440, 0.3, "sine", 0.8); // A4 note, 300ms
+				recordAudioEvent("audio:test_played", { state: ctx.state });
+				return { state: ctx.state, played: true };
+			}
 
-			return { state: initialState, played: false, error: "Resuming context..." };
+			recordAudioEvent("audio:test_failed", {
+				reason: "not_running_after_resume",
+				state: ctx.state
+			});
+			return { state: ctx.state, played: false, error: `Context state: ${ctx.state}` };
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
-			console.warn("[AudioService] Test sound failed:", errorMsg);
+			recordAudioEvent("audio:test_failed", {
+				error: errorMsg,
+				initialState
+			});
 			return { state: initialState, played: false, error: errorMsg };
 		}
 	}
