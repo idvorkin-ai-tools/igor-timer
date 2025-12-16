@@ -37,9 +37,9 @@ export function useStopwatch() {
 
 	const pause = useCallback(() => {
 		clearTimer();
-		elapsedRef.current = state.elapsedMs;
-		setState((prev) => ({ ...prev, isRunning: false }));
-	}, [clearTimer, state.elapsedMs]);
+		// elapsedRef.current is already up-to-date from the interval
+		setState((prev) => ({ ...prev, isRunning: false, elapsedMs: elapsedRef.current }));
+	}, [clearTimer]);
 
 	const toggle = useCallback(() => {
 		if (state.isRunning) {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useBugReporter } from "../contexts/BugReporterContext";
 import { audioService } from "../services/audioService";
 import { sessionName, sessionRecorder } from "../services/pwaDebugServices";
@@ -19,6 +19,26 @@ export function AppSettingsModal({ isOpen, onClose }: AppSettingsModalProps) {
 		showDialog,
 	} = useBugReporter();
 	const [audioTestStatus, setAudioTestStatus] = useState<"idle" | "testing" | "success" | "failed">("idle");
+	const audioTestTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+	// Clean up timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (audioTestTimeoutRef.current) {
+				clearTimeout(audioTestTimeoutRef.current);
+			}
+		};
+	}, []);
+
+	// Handle Escape key to close modal
+	useEffect(() => {
+		if (!isOpen) return;
+		const handleEscape = (e: KeyboardEvent) => {
+			if (e.key === "Escape") onClose();
+		};
+		document.addEventListener("keydown", handleEscape);
+		return () => document.removeEventListener("keydown", handleEscape);
+	}, [isOpen, onClose]);
 
 	if (!isOpen) return null;
 
@@ -45,7 +65,7 @@ export function AppSettingsModal({ isOpen, onClose }: AppSettingsModalProps) {
 			<div className={styles.modal}>
 				<div className={styles.modalHeader}>
 					<h2 className={styles.modalTitle}>SETTINGS</h2>
-					<button type="button" className={styles.modalClose} onClick={onClose}>
+					<button type="button" className={styles.modalClose} onClick={onClose} aria-label="Close">
 						&times;
 					</button>
 				</div>
@@ -77,6 +97,7 @@ export function AppSettingsModal({ isOpen, onClose }: AppSettingsModalProps) {
 						>
 							Report a Bug
 						</button>
+
 					</div>
 
 					{/* Debug Section */}
@@ -97,8 +118,11 @@ export function AppSettingsModal({ isOpen, onClose }: AppSettingsModalProps) {
 									setAudioTestStatus("testing");
 									const result = await audioService.testSound();
 									setAudioTestStatus(result.played ? "success" : "failed");
-									// Reset after 2 seconds
-									setTimeout(() => setAudioTestStatus("idle"), 2000);
+									// Reset after 2 seconds (clear any pending timeout first)
+									if (audioTestTimeoutRef.current) {
+										clearTimeout(audioTestTimeoutRef.current);
+									}
+									audioTestTimeoutRef.current = setTimeout(() => setAudioTestStatus("idle"), 2000);
 								}}
 							>
 								{audioTestStatus === "testing" ? "..." : "Test"}

@@ -13,10 +13,16 @@ export function useSets(maxCount = 15) {
 
 	// Load persisted count on mount
 	useEffect(() => {
-		loadSetsCount().then((savedCount) => {
-			setCount(Math.min(savedCount, maxCount));
-			setIsLoaded(true);
-		});
+		loadSetsCount()
+			.then((savedCount) => {
+				setCount(Math.min(savedCount, maxCount));
+			})
+			.catch((err) => {
+				console.error("Failed to load sets count:", err);
+			})
+			.finally(() => {
+				setIsLoaded(true);
+			});
 	}, [maxCount]);
 
 	// Save count whenever it changes (after initial load)

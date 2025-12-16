@@ -25,6 +25,16 @@ export function TimerSettingsModal({ isOpen, profile, onClose, onSave }: TimerSe
 		setPrepTime(profile.prepTime);
 	}, [profile]);
 
+	// Handle Escape key to close modal
+	useEffect(() => {
+		if (!isOpen) return;
+		const handleEscape = (e: KeyboardEvent) => {
+			if (e.key === "Escape") onClose();
+		};
+		document.addEventListener("keydown", handleEscape);
+		return () => document.removeEventListener("keydown", handleEscape);
+	}, [isOpen, onClose]);
+
 	if (!isOpen) return null;
 
 	const handleSave = () => {
@@ -50,15 +60,16 @@ export function TimerSettingsModal({ isOpen, profile, onClose, onSave }: TimerSe
 			<div className={styles.modal}>
 				<div className={styles.modalHeader}>
 					<h2 className={styles.modalTitle}>TIMER SETTINGS</h2>
-					<button className={styles.modalClose} onClick={onClose}>
+					<button className={styles.modalClose} onClick={onClose} aria-label="Close">
 						&times;
 					</button>
 				</div>
 				<div className={styles.modalBody}>
 					<div className={styles.settingGroup}>
-						<label className={styles.settingLabel}>WORK TIME (seconds)</label>
+						<label className={styles.settingLabel} htmlFor="workTime">WORK TIME (seconds)</label>
 						<div className={styles.settingInput}>
 							<input
+								id="workTime"
 								type="number"
 								value={workTime}
 								onChange={(e) => setWorkTime(Number(e.target.value))}
@@ -68,9 +79,10 @@ export function TimerSettingsModal({ isOpen, profile, onClose, onSave }: TimerSe
 						</div>
 					</div>
 					<div className={styles.settingGroup}>
-						<label className={styles.settingLabel}>REST TIME (seconds)</label>
+						<label className={styles.settingLabel} htmlFor="restTime">REST TIME (seconds)</label>
 						<div className={styles.settingInput}>
 							<input
+								id="restTime"
 								type="number"
 								value={restTime}
 								onChange={(e) => setRestTime(Number(e.target.value))}
@@ -80,9 +92,10 @@ export function TimerSettingsModal({ isOpen, profile, onClose, onSave }: TimerSe
 						</div>
 					</div>
 					<div className={styles.settingGroup}>
-						<label className={styles.settingLabel}>ROUNDS</label>
+						<label className={styles.settingLabel} htmlFor="rounds">ROUNDS</label>
 						<div className={styles.settingInput}>
 							<input
+								id="rounds"
 								type="number"
 								value={rounds}
 								onChange={(e) => setRounds(Number(e.target.value))}
@@ -92,9 +105,10 @@ export function TimerSettingsModal({ isOpen, profile, onClose, onSave }: TimerSe
 						</div>
 					</div>
 					<div className={styles.settingGroup}>
-						<label className={styles.settingLabel}>CYCLES</label>
+						<label className={styles.settingLabel} htmlFor="cycles">CYCLES</label>
 						<div className={styles.settingInput}>
 							<input
+								id="cycles"
 								type="number"
 								value={cycles}
 								onChange={(e) => setCycles(Number(e.target.value))}
@@ -104,9 +118,10 @@ export function TimerSettingsModal({ isOpen, profile, onClose, onSave }: TimerSe
 						</div>
 					</div>
 					<div className={styles.settingGroup}>
-						<label className={styles.settingLabel}>PREP TIME (seconds)</label>
+						<label className={styles.settingLabel} htmlFor="prepTime">PREP TIME (seconds)</label>
 						<div className={styles.settingInput}>
 							<input
+								id="prepTime"
 								type="number"
 								value={prepTime}
 								onChange={(e) => setPrepTime(Number(e.target.value))}

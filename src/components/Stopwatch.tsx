@@ -36,7 +36,7 @@ export function Stopwatch() {
 						LAP
 					</button>
 					<div className={styles.centerControl}>
-						<button className={styles.playBtn} onClick={toggle}>
+						<button className={styles.playBtn} onClick={toggle} aria-label={state.isRunning ? "Stop" : "Start"}>
 							{state.isRunning ? (
 								<div className={styles.stopIcon} />
 							) : (

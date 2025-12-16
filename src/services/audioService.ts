@@ -139,6 +139,8 @@ class AudioService {
 			recordEvent("audio:context_created", { state: this.context.state });
 
 			this.setupListeners();
+			// Re-attach statechange listener for this new context instance
+			this.setupStateChangeListener();
 		}
 		return this.context;
 	}
