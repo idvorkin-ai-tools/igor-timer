@@ -9,13 +9,30 @@ export function useWakeLock() {
 			return;
 		}
 
+		// Release existing lock before requesting new one (prevents leaks on rapid calls)
+		if (wakeLockRef.current) {
+			try {
+				await wakeLockRef.current.release();
+			} catch {
+				// Ignore release errors
+			}
+			wakeLockRef.current = null;
+		}
+
 		try {
-			wakeLockRef.current = await navigator.wakeLock.request("screen");
+			const wakeLock = await navigator.wakeLock.request("screen");
+			wakeLockRef.current = wakeLock;
 			console.log("Wake Lock acquired");
 
-			wakeLockRef.current.addEventListener("release", () => {
+			// Use a named handler to avoid listener accumulation
+			const handleRelease = () => {
 				console.log("Wake Lock released");
-			});
+				// Clean up ref when released externally
+				if (wakeLockRef.current === wakeLock) {
+					wakeLockRef.current = null;
+				}
+			};
+			wakeLock.addEventListener("release", handleRelease, { once: true });
 		} catch (err) {
 			console.log("Wake Lock request failed:", err);
 		}
@@ -23,7 +40,11 @@ export function useWakeLock() {
 
 	const releaseWakeLock = useCallback(async () => {
 		if (wakeLockRef.current) {
-			await wakeLockRef.current.release();
+			try {
+				await wakeLockRef.current.release();
+			} catch {
+				// Ignore release errors
+			}
 			wakeLockRef.current = null;
 		}
 	}, []);

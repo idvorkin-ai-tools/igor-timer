@@ -2,7 +2,7 @@
  * Dialog shown when shake-to-report is triggered or Report Bug clicked
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useBugReporter } from "../contexts/BugReporterContext";
 import styles from "./BugReportDialog.module.css";
 
@@ -10,6 +10,22 @@ export function BugReportDialog() {
 	const { showBugDialog, dismissBugDialog, submitBugReport, getMetadata } = useBugReporter();
 	const [title, setTitle] = useState("");
 	const [description, setDescription] = useState("");
+	const [error, setError] = useState<string | null>(null);
+
+	// Handle Escape key to close dialog
+	useEffect(() => {
+		if (!showBugDialog) return;
+		const handleEscape = (e: KeyboardEvent) => {
+			if (e.key === "Escape") {
+				dismissBugDialog();
+				setTitle("");
+				setDescription("");
+				setError(null);
+			}
+		};
+		document.addEventListener("keydown", handleEscape);
+		return () => document.removeEventListener("keydown", handleEscape);
+	}, [showBugDialog, dismissBugDialog]);
 
 	if (!showBugDialog) {
 		return null;
@@ -18,12 +34,14 @@ export function BugReportDialog() {
 	const metadata = getMetadata();
 
 	const handleSubmit = async () => {
+		setError(null);
 		try {
 			await submitBugReport(title.trim() || "Bug Report", description.trim());
 			setTitle("");
 			setDescription("");
-		} catch (error) {
-			console.error("Failed to submit bug report:", error);
+		} catch (err) {
+			console.error("Failed to submit bug report:", err);
+			setError("Failed to submit. Please try again or report manually on GitHub.");
 		}
 	};
 
@@ -31,6 +49,7 @@ export function BugReportDialog() {
 		dismissBugDialog();
 		setTitle("");
 		setDescription("");
+		setError(null);
 	};
 
 	return (
@@ -114,6 +133,12 @@ export function BugReportDialog() {
 						</div>
 					)}
 				</div>
+
+				{error && (
+					<div className={styles.errorMessage} role="alert">
+						{error}
+					</div>
+				)}
 
 				<div className={styles.actions}>
 					<button type="button" className={styles.cancelBtn} onClick={handleCancel}>

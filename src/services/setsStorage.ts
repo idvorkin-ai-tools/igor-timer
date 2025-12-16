@@ -32,6 +32,9 @@ export async function loadSetsCount(): Promise<number> {
 			const store = transaction.objectStore(STORE_NAME);
 			const request = store.get(KEY);
 
+			transaction.oncomplete = () => db.close();
+			transaction.onerror = () => db.close();
+
 			request.onsuccess = () => {
 				const data = request.result as SetsData | undefined;
 				if (!data) {
@@ -63,6 +66,9 @@ export async function saveSetsCount(count: number): Promise<void> {
 			const transaction = db.transaction(STORE_NAME, "readwrite");
 			const store = transaction.objectStore(STORE_NAME);
 
+			transaction.oncomplete = () => db.close();
+			transaction.onerror = () => db.close();
+
 			const data: SetsData = {
 				count,
 				lastUpdated: Date.now(),
@@ -83,6 +89,10 @@ export async function clearSetsCount(): Promise<void> {
 		return new Promise((resolve, reject) => {
 			const transaction = db.transaction(STORE_NAME, "readwrite");
 			const store = transaction.objectStore(STORE_NAME);
+
+			transaction.oncomplete = () => db.close();
+			transaction.onerror = () => db.close();
+
 			const request = store.delete(KEY);
 			request.onsuccess = () => resolve();
 			request.onerror = () => reject(request.error);

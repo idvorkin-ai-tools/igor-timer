@@ -5,6 +5,8 @@ HTMLCanvasElement.prototype.getContext = () => null;
 
 // Mock AudioContext for tests
 class MockAudioContext {
+	state: AudioContextState = "running";
+
 	createOscillator() {
 		return {
 			connect: () => {},
@@ -23,12 +25,36 @@ class MockAudioContext {
 			},
 		};
 	}
+	createBuffer() {
+		return {};
+	}
+	createBufferSource() {
+		return {
+			connect: () => {},
+			start: () => {},
+			buffer: null,
+		};
+	}
 	get currentTime() {
 		return 0;
 	}
 	get destination() {
 		return {};
 	}
+	resume() {
+		this.state = "running";
+		return Promise.resolve();
+	}
+	suspend() {
+		this.state = "suspended";
+		return Promise.resolve();
+	}
+	close() {
+		this.state = "closed";
+		return Promise.resolve();
+	}
+	addEventListener() {}
+	removeEventListener() {}
 }
 
 Object.defineProperty(window, "AudioContext", {

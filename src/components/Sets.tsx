@@ -132,6 +132,8 @@ export function Sets() {
 				onClick={!isMaxed ? increment : undefined}
 				role="button"
 				tabIndex={0}
+				aria-label={`Add set (current count: ${count})`}
+				aria-disabled={isMaxed}
 				onKeyDown={(e) => {
 					if (e.code === "Space" || e.code === "Enter") {
 						if (!isMaxed) increment();

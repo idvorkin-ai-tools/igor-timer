@@ -121,6 +121,16 @@
   font-weight: 500;
 }
 
+.errorMessage {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 100, 100, 0.15);
+  border: 1px solid rgba(255, 100, 100, 0.3);
+  border-radius: 8px;
+  color: #ff6b6b;
+  font-size: 13px;
+}
+
 .actions {
   display: flex;
   gap: 12px;
