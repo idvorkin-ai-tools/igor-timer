@@ -20,6 +20,12 @@ export function useWakeLock() {
 	const createVideoElement = useCallback(() => {
 		if (videoRef.current) return videoRef.current;
 
+		// Guard against missing document.body (e.g., during SSR or early lifecycle)
+		if (!document.body) {
+			console.warn("Cannot create wake lock video: document.body not available");
+			return null;
+		}
+
 		const video = document.createElement("video");
 		video.setAttribute("playsinline", "");
 		video.setAttribute("muted", "");
@@ -74,8 +80,10 @@ export function useWakeLock() {
 		if (isIOS.current || !("wakeLock" in navigator)) {
 			try {
 				const video = createVideoElement();
-				await video.play();
-				console.log("Wake Lock acquired (iOS video fallback)");
+				if (video) {
+					await video.play();
+					console.log("Wake Lock acquired (iOS video fallback)");
+				}
 			} catch (err) {
 				console.log("iOS video wake lock failed:", err);
 			}
@@ -93,9 +101,11 @@ export function useWakeLock() {
 			wakeLockRef.current = null;
 		}
 
-		// Stop iOS video fallback
+		// Stop and remove iOS video fallback
 		if (videoRef.current) {
 			videoRef.current.pause();
+			videoRef.current.remove();
+			videoRef.current = null;
 			console.log("Wake Lock released (iOS video fallback)");
 		}
 	}, []);
